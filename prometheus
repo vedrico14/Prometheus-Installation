@@ -1,0 +1,78 @@
+# Change Directory to /opt (To installation software outside the distro's repository)
+cd /opt
+
+# Download and Install Prometheus Server
+wget https://github.com/prometheus/prometheus/releases/download/v2.44.0/prometheus-2.44.0.linux-amd64.tar.gz
+tar xvfz prometheus-2.44.0.linux-amd64.tar.gz
+
+# Konfigurasi file config.yml (masuk ke direktori Prometheus yang sudah diinstal sebelumnya)
+cd prometheus-2.44.0.linux-amd64/
+nano config.yml (Tambahkan Script berikut dibawah ini)
+---
+global:
+  scrape_interval:     10s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus-ricofedryan14'
+    static_configs:
+    - targets: ['YourIP:9090']
+
+  - job_name: 'node-ricofedryan14'
+    scrape_interval:  5s
+    static_configs:
+    - targets: ['YourIP1','YourIP2']
+---
+
+# Testing runs Prometheus Server manually
+./promtool check config config.yml
+./prometheus --config.file=/opt/prometheus-2.44.0.linux-amd64/config.yml
+
+# Access all of the following URLs using curl and browser
+Metrics: http://YourIP:9090/metrics
+Graph  : http://YourIP:9090/
+Target : http://YourIP:9090/targets
+
+# Create a Prometheus Server configuration as a service
+nano /etc/systemd/system/prometheus_server.service (Isi dengan Script dibawah ini)
+....
+[Unit]
+Description=Prometheus Server
+
+[Service]
+User=root
+ExecStart=/opt/prometheus-2.44.0.linux-amd64/prometheus --config.file=/opt/prometheus-2.44.0.linux-amd64/config.yml --web.external-url=http://0.0.0.0:9090/
+
+[Install]
+WantedBy=default.target
+....
+
+# Running Prometheus Server as a service
+systemctl daemon-reload
+systemctl enable prometheus_server.service
+systemctl start prometheus_server.service
+systemctl status prometheus_server.service
+journalctl -u prometheus_server
+
+
+# Akses Grafik pada http://YourIP:9090/
+# Untuk menampilkan status instance:
+up{job="node-ricofedryan14"}
+
+# Untuk menampilkan jumlah instance aktif pada job node-ricofedryan14:
+sum(up{job="node-ricofedryan14"})
+
+# Untuk menampilkan uptime dalam bentuk jam pada node1
+(time() - process_start_time_seconds{instance="YourIP:9100"}) / 3600
+
+# Untuk menampilkan uptime dalam bentuk jam:
+(time() - process_start_time_seconds{instance="YourIP:9100"}) / 3600
+
+# Untuk menampilkan Informasi CPU utilization:
+100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100 )
+
+# Untuk menampilkan memory yang tersedia dalam bentuk MB:
+node_memory_MemAvailable_bytes/1024/1024
+
+# Untuk Menampilkan memory yang digunakan dalam persen:
+100 * (1 - ((avg_over_time(node_memory_MemFree_bytes[10m]) + avg_over_time(node_memory_Cached_bytes[10m]) + avg_over_time(node_memory_Buffers_bytes[10m])) / avg_over_time(node_memory_MemTotal_bytes[10m])))
