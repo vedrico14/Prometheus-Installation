@@ -1,0 +1,32 @@
+# Download and Install Node Exporter
+wget https://github.com/prometheus/node_exporter/releases/download/v1.6.0/node_exporter-1.6.0.linux-amd64.tar.gz
+tar xvfz node_exporter-1.6.0.linux-amd64.tar.gz
+
+# Testing runs Node Exporter manually
+cd node_exporter-1.6.0.linux-amd64
+./node_exporter
+
+# Access metrics using curl
+curl http://YourIP:9100/metrics
+
+# Access metrics using a browser
+http://YourIP:9100/metrics
+
+# Create a Node Exporter configuration as a service
+nano /etc/systemd/system/node_exporter.service
+# Add the following script to the file
+[Unit]
+Description=Node Exporter
+
+[Service]
+User=root
+ExecStart=/opt/node_exporter-1.6.0.linux-amd64/node_exporter
+
+[Install]
+WantedBy=default.target
+
+# Running Node Exporter as a Service
+systemctl daemon-reload
+systemctl enable --now node_exporter.service
+systemctl status node_exporter.service
+journalctl -u node_exporter
