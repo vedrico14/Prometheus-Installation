@@ -1,3 +1,6 @@
+# Change Directory to /opt (To installation software outside the distro's repository)
+cd /opt
+
 # Download and Install Node Exporter
 wget https://github.com/prometheus/node_exporter/releases/download/v1.6.0/node_exporter-1.6.0.linux-amd64.tar.gz
 tar xvfz node_exporter-1.6.0.linux-amd64.tar.gz
