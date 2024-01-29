@@ -1,0 +1,95 @@
+# Change Directory to /opt (To installation software outside the distro's repository)
+cd /opt
+
+# Download and Install Alert Manager
+wget https://github.com/prometheus/alertmanager/releases/download/v0.25.0/alertmanager-0.25.0.linux-amd64.tar.gz
+tar xvfz alertmanager-0.25.0.linux-amd64.tar.gz
+
+# Konfigurasi AlertManager config.yml
+cd alertmanager-0.25.0.linux-amd64
+nano config.yml
+
+....
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: [Alertname]
+  receiver: email-ricofedryan14
+
+receivers:
+- name: email-ricofedryan14
+  email_configs:
+  - to: "email1@gmail.com"
+    from: "email1@gmail.com"
+    smarthost: smtp.gmail.com:587
+    auth_username: "email1@gmail.com"
+    auth_identity: "email1@gmail.com"
+    auth_password: "google-app-password"
+    send_resolved: True
+....
+NOTED: Jika menggunakan Gmail untuk bisa membuat app password harus mengaktifkan 2FA terlebih dahulu
+
+# Create an AlertManager configuration as a service
+nano /etc/systemd/system/alert_manager.service
+....
+[Unit]
+Description=Alert Manager
+
+[Service]
+User=root
+ExecStart=/opt/alertmanager-0.25.0.linux-amd64/alertmanager --config.file=/opt/alertmanager-0.25.0.linux-amd64/config.yml --web.external-url=http://172.16.7.10:9093/ --log.level=debug
+
+[Install]
+WantedBy=default.target
+....
+
+# Running AlertManager as a Service
+./amtool check-config config.yml
+systemctl daemon-reload
+systemctl enable alert_manager.service
+systemctl start alert_manager.service
+systemctl status alert_manager.service
+journalctl -u alert_manager
+
+# Access all of the following URLs in curl and using browser
+http://YourIP:9093/metrics
+http://YourIP:9093
+http://YourIP:9093/#/status
+
+# Create Alert rules
+cd /opt/prometheus-2.44.0.linux-amd64/
+nano mysql_rules.yml
+....
+groups:
+- name: mysql.rules
+  rules:
+  - alert: Mysql80Down
+    expr: mysql_up{job="mysql-ricofedryan14"} == 0
+    for: 5m
+    annotations:
+      summary: "Service mysql80 Down"
+      description: "Container service mysql80 of job {{ $labels.job }} has been down for more than 5 minutes."
+....
+
+# Add the configuration below to the Prometheus configuration
+....
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - YourIP:9093
+
+rule_files:
+  - "mysql_rules.yml"
+....
+
+# Restart Prometheus Server
+./promtool check config config.yml
+systemctl restart prometheus_server
+
+# Use a browser to access the following URL:
+http://YourIP:9090/config
+http://YourIP:9090/rules
+http://YourIP:9090/alerts
+http://YourIP:9093/#/status
